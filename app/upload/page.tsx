@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
   const router = useRouter();
+  const supabase = createClientComponentClient();
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -22,19 +24,55 @@ export default function UploadPage() {
     }
 
     setUploading(true);
-    setMessage('Uploading...');
+    setMessage('Uploading to Supabase...');
 
-    // TODO: Upload to Supabase Storage
-    // For now, just simulate upload
-    setTimeout(() => {
-      setUploading(false);
-      setMessage('✅ Upload successful! Processing with AI...');
-      
-      // Redirect to processing page
+    try {
+      // Upload file to Supabase Storage
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('forms')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: { publicUrl } } = supabase.storage
+        .from('forms')
+        .getPublicUrl(fileName);
+
+      setMessage('✅ Upload successful! Saving to database...');
+
+      // Save to database
+      const { data: formData, error: dbError } = await supabase
+        .from('forms')
+        .insert({
+          original_pdf_url: publicUrl,
+          filled_data: {
+            name: "Your Name",
+            email: "your@email.com",
+            phone: "+91 9876543210",
+            address: "Your Address"
+          },
+          status: 'processing'
+        })
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+
+      setMessage('✅ Saved! Redirecting...');
+
+      // Redirect to result page with form ID
       setTimeout(() => {
-        router.push('/processing');
-      }, 2000);
-    }, 2000);
+        router.push(`/result?formId=${formData.id}`);
+      }, 1500);
+
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      setMessage('❌ Error: ' + error.message);
+      setUploading(false);
+    }
   };
 
   return (
@@ -48,87 +86,51 @@ export default function UploadPage() {
                 📝 FormFiller AI
               </h1>
             </div>
-            <div className="flex items-center">
+            <div className="flex items-center space-x-4">
               <button
                 onClick={() => router.push('/dashboard')}
-                className="bg-gray-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-gray-700 transition"
+                className="px-4 py-2 text-gray-700 hover:text-blue-600 transition"
               >
-                ← Back to Dashboard
+                Dashboard
               </button>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Upload Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-2xl mx-auto">
-          <div className="bg-white rounded-xl shadow-lg p-8">
-            <h1 className="text-3xl font-bold text-center mb-6">
-              📤 Upload Your Form
-            </h1>
-            <p className="text-gray-600 text-center mb-8">
-              Upload a PDF or image of your form. Our AI will auto-fill it in seconds!
-            </p>
-
-            {/* File Upload Area */}
-            <div className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center mb-6">
-              <div className="text-6xl mb-4">📄</div>
-              <p className="text-gray-600 mb-4">
-                Drag and drop your form here, or click to browse
-              </p>
-              <input
-                type="file"
-                accept=".pdf,image/*"
-                onChange={handleFileChange}
-                className="hidden"
-                id="file-upload"
-              />
-              <label
-                htmlFor="file-upload"
-                className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg cursor-pointer hover:bg-blue-700 transition"
-              >
-                Choose File
-              </label>
-              {file && (
-                <p className="mt-4 text-green-600 font-semibold">
-                  ✅ Selected: {file.name}
-                </p>
-              )}
-            </div>
-
-            {/* Upload Button */}
+      {/* Main Content */}
+      <main className="max-w-2xl mx-auto py-12 px-4">
+        <div className="bg-white rounded-2xl shadow-xl p-8">
+          <h1 className="text-3xl font-bold text-center mb-6">Upload Your Form</h1>
+          
+          <div className="space-y-4">
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handleFileChange}
+              className="w-full p-4 border-2 border-gray-300 rounded-lg"
+            />
+            
             <button
               onClick={handleUpload}
-              disabled={!file || uploading}
-              className={`w-full py-4 rounded-lg font-semibold text-lg transition ${
-                !file || uploading
-                  ? 'bg-gray-300 cursor-not-allowed'
-                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              disabled={uploading || !file}
+              className={`w-full py-3 rounded-lg font-semibold text-white transition ${
+                uploading || !file
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-lg'
               }`}
             >
-              {uploading ? 'Uploading...' : 'Upload & Fill with AI'}
+              {uploading ? 'Uploading...' : 'Upload & Process'}
             </button>
 
-            {/* Message */}
             {message && (
-              <p className="mt-6 text-center text-lg font-semibold text-blue-600">
+              <div className="text-center text-gray-700 font-medium">
                 {message}
-              </p>
+              </div>
             )}
-
-            {/* Supported Formats */}
-            <div className="mt-8 pt-6 border-t border-gray-200">
-              <h3 className="font-semibold mb-3 text-gray-700">Supported Formats:</h3>
-              <ul className="text-gray-600 text-sm space-y-2">
-                <li>✅ PDF files (.pdf)</li>
-                <li>✅ Images (.jpg, .png, .jpeg)</li>
-                <li>✅ Max file size: 10 MB</li>
-              </ul>
-            </div>
           </div>
         </div>
-      </section>
+      </main>
     </div>
   );
 }
