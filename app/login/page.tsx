@@ -1,13 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-
-const supabase = createClient(
-  'https://hewmchtxbpldhnvvghyc.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhld21jaHR4YnBsZGhudnZnaHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NTIxNDIsImV4cCI6MjEwNTEyODE0Mn0.HHe2IITS7yCqaWpUqBJE9iH1ldy_djgc1NNaijVXecE'
-);
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -24,7 +20,7 @@ export default function LoginPage() {
 
     if (isLogin) {
       // Login
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { error } = await getSupabaseBrowserClient().auth.signInWithPassword({
         email,
         password,
       });
@@ -37,7 +33,7 @@ export default function LoginPage() {
       }
     } else {
       // Signup
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await getSupabaseBrowserClient().auth.signUp({
         email,
         password,
       });
@@ -102,9 +98,9 @@ export default function LoginPage() {
         </p>
 
         <p className="mt-4 text-center">
-          <a href="/" className="text-gray-600 hover:text-gray-900 text-sm">
+          <Link href="/" className="text-gray-600 hover:text-gray-900 text-sm">
             ← Back to Home
-          </a>
+          </Link>
         </p>
       </div>
     </div>

@@ -2,17 +2,13 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createBrowserClient } from '@supabase/ssr';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
   const router = useRouter();
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -30,9 +26,10 @@ export default function UploadPage() {
     setMessage('Uploading to Supabase...');
 
     try {
+      const supabase = getSupabaseBrowserClient();
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('forms')
         .upload(fileName, file);
 
@@ -68,9 +65,9 @@ export default function UploadPage() {
         router.push(`/result?formId=${formData.id}`);
       }, 1500);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error('Upload error:', error);
-      setMessage('❌ Error: ' + error.message);
+      setMessage(`Error: ${error instanceof Error ? error.message : 'Upload failed.'}`);
       setUploading(false);
     }
   };

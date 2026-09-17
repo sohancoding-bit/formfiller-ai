@@ -28,28 +28,18 @@ export default function MyFormsPage() {
         </div>
       </nav>
 
-      {/* My Forms Section */}
-      <section className="py-20 px-4">
-        <div className="max-w-4xl mx-auto">
-          <h1 className="text-4xl font-bold text-center mb-8">
-            📋 My Forms
-          </h1>
-          
-          <div className="bg-white rounded-xl shadow-lg p-8 text-center">
-            <div className="text-6xl mb-4">📁</div>
-            <h2 className="text-2xl font-semibold mb-4">No forms yet!</h2>
-            <p className="text-gray-600 mb-6">
-              Upload your first form to get started.
-            </p>
-            <button
-              onClick={() => router.push('/upload')}
-              className="bg-blue-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-blue-700 transition"
-            >
-              Upload Your First Form
-            </button>
-          </div>
-        </div>
-      </section>
+      <main className="mx-auto max-w-4xl px-4 py-20 text-center">
+        <h1 className="text-4xl font-bold">My Forms</h1>
+        <p className="mt-4 text-gray-600">
+          Your saved forms are available in the dashboard.
+        </p>
+        <button
+          onClick={() => router.push('/dashboard')}
+          className="mt-8 rounded-lg bg-blue-600 px-8 py-3 font-semibold text-white hover:bg-blue-700"
+        >
+          Open Dashboard
+        </button>
+      </main>
     </div>
   );
 }

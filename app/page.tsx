@@ -1,35 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  'https://hewmchtxbpldhnvvghyc.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhld21jaHR4YnBsZGhudnZnaHljIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk1NTIxNDIsImV4cCI6MjEwNTEyODE0Mn0.HHe2IITS7yCqaWpUqBJE9iH1ldy_djgc1NNaijVXecE'
-);
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export default function Home() {
   const [message, setMessage] = useState('');
+  const [email, setEmail] = useState('');
 
-  function handleJoinWaitlist() {
-    const email = (document.getElementById('email') as HTMLInputElement).value;
-    
+  async function handleJoinWaitlist() {
     if (!email) {
-      alert('Please enter your email!');
+      setMessage('Please enter your email.');
       return;
     }
 
-    supabase
-      .from('waitlist')
-      .insert([{ email }])
-      .then(({ error }) => {
-        if (error) {
-          alert('Error: ' + error.message);
-        } else {
-          setMessage('🎉 Thanks! You\'re on the waitlist!');
-          (document.getElementById('email') as HTMLInputElement).value = '';
-        }
-      });
+    const { error } = await getSupabaseBrowserClient().from('waitlist').insert([{ email }]);
+    if (error) {
+      setMessage(`Error: ${error.message}`);
+      return;
+    }
+
+    setMessage('Thanks! You are on the waitlist.');
+    setEmail('');
   }
   
   return (
@@ -69,8 +60,9 @@ export default function Home() {
             <input
               type="email"
               placeholder="Enter your email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
               className="w-full px-4 py-3 rounded-lg border border-gray-300 mb-4 focus:outline-none focus:border-blue-600"
-              id="email"
             />
             <button
               onClick={handleJoinWaitlist}
@@ -91,7 +83,7 @@ export default function Home() {
       {/* Features Section */}
       <section id="features" className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">Why You'll Love FormFiller</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">Why You&apos;ll Love FormFiller</h2>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="text-center p-6">
               <div className="text-4xl mb-4">⚡</div>

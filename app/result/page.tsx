@@ -2,17 +2,18 @@
 
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { createBrowserClient } from '@supabase/ssr';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+
+type FormData = {
+  filled_data: Record<string, unknown> | null;
+  filled_pdf_url: string | null;
+};
 
 export default function ResultPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [formData, setFormData] = useState<any>(null);
+  const [formData, setFormData] = useState<FormData | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
 
   useEffect(() => {
     async function fetchFormData() {
@@ -23,7 +24,7 @@ export default function ResultPage() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await getSupabaseBrowserClient()
         .from('forms')
         .select('*')
         .eq('id', formId)
@@ -40,7 +41,7 @@ export default function ResultPage() {
     }
 
     fetchFormData();
-  }, [searchParams, router, supabase]);
+  }, [searchParams, router]);
 
   if (loading) {
     return (
