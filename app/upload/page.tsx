@@ -2,14 +2,17 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createBrowserClient } from '@supabase/ssr';
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState('');
   const router = useRouter();
-  const supabase = createClientComponentClient();
+  const supabase = createBrowserClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+  );
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -27,7 +30,6 @@ export default function UploadPage() {
     setMessage('Uploading to Supabase...');
 
     try {
-      // Upload file to Supabase Storage
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -36,14 +38,12 @@ export default function UploadPage() {
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
       const { data: { publicUrl } } = supabase.storage
         .from('forms')
         .getPublicUrl(fileName);
 
       setMessage('✅ Upload successful! Saving to database...');
 
-      // Save to database
       const { data: formData, error: dbError } = await supabase
         .from('forms')
         .insert({
@@ -64,7 +64,6 @@ export default function UploadPage() {
 
       setMessage('✅ Saved! Redirecting...');
 
-      // Redirect to result page with form ID
       setTimeout(() => {
         router.push(`/result?formId=${formData.id}`);
       }, 1500);
@@ -78,7 +77,6 @@ export default function UploadPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Navigation */}
       <nav className="bg-white shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -99,7 +97,6 @@ export default function UploadPage() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <main className="max-w-2xl mx-auto py-12 px-4">
         <div className="bg-white rounded-2xl shadow-xl p-8">
           <h1 className="text-3xl font-bold text-center mb-6">Upload Your Form</h1>
