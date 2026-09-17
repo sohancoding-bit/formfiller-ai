@@ -1,58 +1,82 @@
 'use client';
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { createBrowserClient } from '@supabase/ssr';
 
-export default function ResultPage() {
+export default function UploadPage() {
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [message, setMessage] = useState('');
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const [formData, setFormData] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
-  const supabase = createClient(
+  const supabase = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   );
 
-  useEffect(() => {
-    async function fetchFormData() {
-      const formId = searchParams.get('formId');
-      
-      if (!formId) {
-        router.push('/dashboard');
-        return;
-      }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setFile(e.target.files[0]);
+    }
+  };
 
-      const { data, error } = await supabase
-        .from('forms')
-        .select('*')
-        .eq('id', formId)
-        .single();
-
-      if (error || !data) {
-        console.error('Error fetching form:', error);
-        router.push('/dashboard');
-        return;
-      }
-
-      setFormData(data);
-      setLoading(false);
+  const handleUpload = async () => {
+    if (!file) {
+      alert('Please select a file first!');
+      return;
     }
 
-    fetchFormData();
-  }, [searchParams, router, supabase]);
+    setUploading(true);
+    setMessage('Uploading to Supabase...');
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-xl">Loading...</div>
-      </div>
-    );
-  }
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('forms')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('forms')
+        .getPublicUrl(fileName);
+
+      setMessage('✅ Upload successful! Saving to database...');
+
+      const { data: formData, error: dbError } = await supabase
+        .from('forms')
+        .insert({
+          original_pdf_url: publicUrl,
+          filled_data: {
+            name: "Your Name",
+            email: "your@email.com",
+            phone: "+91 9876543210",
+            address: "Your Address"
+          },
+          status: 'completed',
+          filled_pdf_url: publicUrl
+        })
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+
+      setMessage('✅ Saved! Redirecting...');
+
+      setTimeout(() => {
+        router.push(`/result?formId=${formData.id}`);
+      }, 1500);
+
+    } catch (error: any) {
+      console.error('Upload error:', error);
+      setMessage('❌ Error: ' + error.message);
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Navigation */}
       <nav className="bg-white shadow-lg border-b border-gray-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
@@ -68,71 +92,40 @@ export default function ResultPage() {
               >
                 Dashboard
               </button>
-              <button
-                onClick={() => router.push('/upload')}
-                className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:shadow-lg transition"
-              >
-                New Form
-              </button>
             </div>
           </div>
         </div>
       </nav>
 
-      {/* Main Content */}
-      <main className="max-w-4xl mx-auto py-12 px-4">
+      <main className="max-w-2xl mx-auto py-12 px-4">
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <div className="text-center mb-8">
-            <div className="text-6xl mb-4">🎉</div>
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-              Your Form is Ready!
-            </h1>
-            <p className="text-gray-600 mt-2">
-              AI has successfully filled your form in seconds!
-            </p>
-          </div>
-
-          {/* Filled Form Preview */}
-          <div className="bg-gray-50 rounded-xl p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-4">Filled Form Preview:</h2>
+          <h1 className="text-3xl font-bold text-center mb-6">Upload Your Form</h1>
+          
+          <div className="space-y-4">
+            <input
+              type="file"
+              accept=".pdf"
+              onChange={handleFileChange}
+              className="w-full p-4 border-2 border-gray-300 rounded-lg"
+            />
             
-            {formData?.filled_data ? (
-              <pre className="bg-white p-4 rounded-lg overflow-auto text-sm">
-                {JSON.stringify(formData.filled_data, null, 2)}
-              </pre>
-            ) : (
-              <div className="text-gray-500">No form data available</div>
+            <button
+              onClick={handleUpload}
+              disabled={uploading || !file}
+              className={`w-full py-3 rounded-lg font-semibold text-white transition ${
+                uploading || !file
+                  ? 'bg-gray-400 cursor-not-allowed'
+                  : 'bg-gradient-to-r from-blue-600 to-purple-600 hover:shadow-lg'
+              }`}
+            >
+              {uploading ? 'Uploading...' : 'Upload & Process'}
+            </button>
+
+            {message && (
+              <div className="text-center text-gray-700 font-medium">
+                {message}
+              </div>
             )}
-          </div>
-
-          {/* Download Button */}
-          {formData?.filled_pdf_url && (
-            <div className="text-center">
-              <a
-                href={formData.filled_pdf_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block px-8 py-3 bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-lg font-semibold hover:shadow-xl transition"
-              >
-                📥 Download Filled PDF
-              </a>
-            </div>
-          )}
-
-          {/* Actions */}
-          <div className="flex justify-center space-x-4 mt-8">
-            <button
-              onClick={() => router.push('/upload')}
-              className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:shadow-lg transition"
-            >
-              Fill Another Form
-            </button>
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="px-6 py-3 border-2 border-gray-300 text-gray-700 rounded-lg font-semibold hover:border-blue-600 transition"
-            >
-              Go to Dashboard
-            </button>
           </div>
         </div>
       </main>

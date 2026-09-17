@@ -54,7 +54,8 @@ export default function UploadPage() {
             phone: "+91 9876543210",
             address: "Your Address"
           },
-          status: 'processing'
+          status: 'completed',
+          filled_pdf_url: publicUrl
         })
         .select()
         .single();
